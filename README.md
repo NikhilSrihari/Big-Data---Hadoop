@@ -1,4 +1,4 @@
-# Big-Data---
+# Big Data - MapReduce program and Visualisation for Word count and Word co-occurence for data on NBA teams, using Hadoop.
 
 1. Part 1 - Collecting data on NBA teams from 3 different sources: NY Times, Twitter and Common Crawler using APIs
 2. Part 2 - MapReduce program for calculating Word Count on sample data, using Apache Hadoop.
