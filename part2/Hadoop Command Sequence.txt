@@ -1,0 +1,8 @@
+docker run --hostname=quickstart.cloudera --privileged=true -t -i -v C:\Users\nikhi\Documents\UB\dockerMR\folder\part2:/src --publish-all=true -p 8888 cloudera/quickstart /usr/bin/docker-quickstart
+
+hadoop fs -mkdir /user/nikhilsr;hadoop fs -mkdir /user/nikhilsr/MR;hadoop fs -mkdir /user/nikhilsr/MR/input;
+cd src/data;hadoop fs -put *.txt /user/nikhilsr/MR/input;
+
+hadoop fs -rmr /user/nikhilsr/MR/output;hadoop jar /usr/lib/hadoop-mapreduce/hadoop-streaming-2.6.0-cdh5.7.0.jar -file /src/mapper.py -mapper /src/mapper.py -file /src/reducer.py -reducer /src/reducer.py -input /user/nikhilsr/MR/input/*.txt -output /user/nikhilsr/MR/output;
+
+hadoop fs -cat /user/nikhilsr/MR/output/part*;hadoop fs -get /user/nikhilsr/MR/output/ /src/
