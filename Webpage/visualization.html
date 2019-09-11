@@ -1,0 +1,412 @@
+<html>
+<head>
+    <title>Visualization</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.16/d3.min.js'></script>
+	<link rel="stylesheet" href="./jqwidgets/styles/jqx.base.css" type="text/css"/>
+	<script type="text/javascript" src="./jqwidgets/scripts/jquery-1.11.1.min.js"></script>
+	<script type="text/javascript" src="./jqwidgets/jqxcore.js"></script>
+	<script type="text/javascript" src="./jqwidgets/jqxbuttons.js"></script>
+	<script type="text/javascript" src="./jqwidgets/jqxscrollbar.js"></script>
+	<script type="text/javascript" src="./jqwidgets/jqxlistbox.js"></script>
+	<script type="text/javascript" src="./jqwidgets/jqxdropdownlist.js"></script>
+	<script>
+		function barGraph(domId, data) {
+			var margin = {top: 20, right: 20, bottom: 70, left: 80},
+			width = 700 - margin.left - margin.right,
+			height = 400 - margin.top - margin.bottom;
+			var x = d3.scale.ordinal().rangeRoundBands([0, width], .05);
+			var y = d3.scale.linear().range([height, 0]);
+			var xAxis = d3.svg.axis()
+			    .scale(x)
+			    .orient("bottom");
+			var yAxis = d3.svg.axis()
+			    .scale(y)
+			    .orient("left");
+			var svg = d3.select(domId)
+			    .attr("width", width + margin.left + margin.right)
+			    .attr("height", height + margin.top + margin.bottom)
+			    .append("g")
+			    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+			x.domain(data.map(function(d) { return d[0]; }));
+			y.domain([0, d3.max(data, function(d) { return d[1]; })]);
+			svg.append("g")
+				.attr("class", "x axis")
+				.attr("transform", "translate(0," + height + ")")
+				.call(xAxis)
+				.selectAll("text")
+				.style("text-anchor", "end")
+				.attr("dx", "-.8em")
+				.attr("dy", "-.55em")
+				.attr("transform", "rotate(-90)" );
+			svg.append("g")
+				.attr("class", "y axis")
+				.call(yAxis)
+				.append("text")
+				.attr("transform", "rotate(-90)")
+				.attr("y", 6)
+				.attr("dy", ".71em")
+				.style("text-anchor", "end")
+				.text("Count");
+			svg.selectAll("bar")
+				.data(data)
+				.enter()
+				.append("rect")
+				.style("fill", "steelblue")
+				.attr("x", function(d) { return x(d[0]); })
+				.attr("width", x.rangeBand())
+				.attr("y", function(d) { return y(d[1]); })
+				.attr("height", function(d) { return height - y(d[1]); });
+		}
+		function heatMap(domId, data, wordsList) {
+			var margin = { top: 50, right: 0, bottom: 100, left: 60 },
+			width = 960 - margin.left - margin.right,
+			height = 1080 - margin.top - margin.bottom,
+			gridSize = Math.floor(width / 10),
+			legendElementWidth = gridSize,
+			buckets = 9,
+			colors = ["#ffffd9","#edf8b1","#c7e9b4","#7fcdbb","#41b6c4","#1d91c0","#225ea8","#253494","#081d58"];
+			var svg = d3.select(domId)
+						.attr("width", width + margin.left + margin.right)
+						.attr("height", height + margin.top + margin.bottom)
+						.append("g")
+						.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+			var yWordLabels = svg.selectAll(".yWordLabel")
+								.data(wordsList)
+								.enter().append("text")
+								.text(function (d) { return d; })
+								.attr("x", 0)
+								.attr("y", function (d, i) { return i * gridSize; })
+								.style("text-anchor", "middle")
+								.attr("transform", "translate(-40," + gridSize / 1.5 + ")")
+								.attr("class", "yWordLabel");
+			var xWordLabels = svg.selectAll(".xWordLabel")
+								.data(wordsList)
+								.enter().append("text")
+								.text(function(d) { return d; })
+								.attr("x", function(d, i) { return i * gridSize; })
+								.attr("y", 0)
+								.style("text-anchor", "middle")
+								.attr("transform", "translate(" + gridSize / 2 + ", -6)")
+								.attr("class", "xWordLabel");
+			var colorScale = d3.scale.quantile()
+								.domain([0, buckets-1, d3.max(data, function (d) { return d.value; })])
+								.range(colors);
+			var cards = svg.selectAll(".hour")
+							.data(data, function(d) {return d.w1+':'+d.w2;});
+			cards.append("title");
+			cards.enter().append("rect")
+				.attr("x", function(d,i) { return (d.w1i) * gridSize; })
+				.attr("y", function(d,i) { return (d.w2i) * gridSize; })
+				.attr("rx", 4)
+				.attr("ry", 4)
+				.attr("class", "hour bordered")
+				.attr("width", gridSize)
+				.attr("height", gridSize)
+				.style("fill", colors[0]);
+			cards.transition().duration(1000)
+				.style("fill", function(d) { return colorScale(d.value); });
+			cards.select("title").text(function(d) { return d.value; });
+			cards.exit().remove();
+			var legend = svg.selectAll(".legend").data([0].concat(colorScale.quantiles()), function(d) { return d; });
+			legend.enter().append("g")
+				.attr("class", "legend");
+			legend.append("rect")
+				.attr("x", function(d, i) { return legendElementWidth * i; })
+				.attr("y", height)
+				.attr("width", legendElementWidth)
+				.attr("height", gridSize/1.5)
+				.style("fill", function(d, i) { return colors[i]; });
+			legend.append("text")
+				.attr("class", "mono")
+				.text(function(d) { return ">= " + Math.round(d); })
+				.attr("x", function(d, i) { return legendElementWidth * i; })
+				.attr("y", height+ gridSize);
+			legend.exit().remove();
+		}
+		$(document).ready(function(){
+			$("#barGraphContainer").hide();
+			topics_source = ["Atlantic Division", "Central Division", "Southeast Division",
+								"Northwest Division", "Pacific Division", "Southwest Division",
+								"National Basketball Association"]
+			datasource_source = ["Twitter", "New York Times", "Common Crawler"]
+			cnt_filelocations = { "Twitter": [  ["../part3/Twitter/Data/atlantic_twitterData_wordcount.txt", 
+												 "../part3/Twitter/Data/atlantic_stwitterData_wordcount.txt"],
+												["../part3/Twitter/Data/central_twitterData_wordcount.txt", 
+												 "../part3/Twitter/Data/central_stwitterData_wordcount.txt"],
+												["../part3/Twitter/Data/southeast_twitterData_wordcount.txt", 
+												 "../part3/Twitter/Data/southeast_stwitterData_wordcount.txt"],
+												["../part3/Twitter/Data/northwest_twitterData_wordcount.txt", 
+												 "../part3/Twitter/Data/northwest_stwitterData_wordcount.txt"],
+												["../part3/Twitter/Data/pacific_twitterData_wordcount.txt", 
+												 "../part3/Twitter/Data/pacific_stwitterData_wordcount.txt"],
+												["../part3/Twitter/Data/southwest_twitterData_wordcount.txt", 
+												 "../part3/Twitter/Data/southwest_stwitterData_wordcount.txt"] ],
+								"New York Times": [  ["../part3/NYT/Data/atlantic_newsData_wordcount.txt", 
+												 "../part3/NYT/Data/atlantic_snewsData_wordcount.txt"],
+												["../part3/NYT/Data/central_newsData_wordcount.txt", 
+												 "../part3/NYT/Data/central_snewsData_wordcount.txt"],
+												["../part3/NYT/Data/southeast_newsData_wordcount.txt", 
+												 "../part3/NYT/Data/southeast_snewsData_wordcount.txt"],
+												["../part3/NYT/Data/northwest_newsData_wordcount.txt", 
+												 "../part3/NYT/Data/northwest_snewsData_wordcount.txt"],
+												["../part3/NYT/Data/pacific_newsData_wordcount.txt", 
+												 "../part3/NYT/Data/pacific_snewsData_wordcount.txt"],
+												["../part3/NYT/Data/southwest_newsData_wordcount.txt", 
+												 "../part3/NYT/Data/southwest_snewsData_wordcount.txt"] ],
+								"Common Crawler": [  ["../part3/Commoncrawl/Data/atlantic_crawlData_wordcount.txt", 
+												 "../part3/Commoncrawl/Data/atlantic_scrawlData_wordcount.txt"],
+												["../part3/Commoncrawl/Data/central_crawlData_wordcount.txt", 
+												 "../part3/Commoncrawl/Data/central_scrawlData_wordcount.txt"],
+												["../part3/Commoncrawl/Data/southeast_crawlData_wordcount.txt", 
+												 "../part3/Commoncrawl/Data/southeast_scrawlData_wordcount.txt"],
+												["../part3/Commoncrawl/Data/northwest_crawlData_wordcount.txt", 
+												 "../part3/Commoncrawl/Data/northwest_scrawlData_wordcount.txt"],
+												["../part3/Commoncrawl/Data/pacific_crawlData_wordcount.txt", 
+												 "../part3/Commoncrawl/Data/pacific_scrawlData_wordcount.txt"],
+												["../part3/Commoncrawl/Data/southwest_crawlData_wordcount.txt", 
+												 "../part3/Commoncrawl/Data/southwest_scrawlData_wordcount.txt"] ] }
+			co_filelocations = { "Twitter": [  ["../part3/Twitter/Data/atlantic_twitterData_wordcooccurence.txt", 
+												 "../part3/Twitter/Data/atlantic_stwitterData_wordcooccurence.txt"],
+												["../part3/Twitter/Data/central_twitterData_wordcooccurence.txt", 
+												 "../part3/Twitter/Data/central_stwitterData_wordcooccurence.txt"],
+												["../part3/Twitter/Data/southeast_twitterData_wordcooccurence.txt", 
+												 "../part3/Twitter/Data/southeast_stwitterData_wordcooccurence.txt"],
+												["../part3/Twitter/Data/northwest_twitterData_wordcooccurence.txt", 
+												 "../part3/Twitter/Data/northwest_stwitterData_wordcooccurence.txt"],
+												["../part3/Twitter/Data/pacific_twitterData_wordcooccurence.txt", 
+												 "../part3/Twitter/Data/pacific_stwitterData_wordcooccurence.txt"],
+												["../part3/Twitter/Data/southwest_twitterData_wordcooccurence.txt", 
+												 "../part3/Twitter/Data/southwest_stwitterData_wordcooccurence.txt"] ],
+								"New York Times": [  ["../part3/NYT/Data/atlantic_newsData_wordcooccurence.txt", 
+												 "../part3/NYT/Data/atlantic_snewsData_wordcooccurence.txt"],
+												["../part3/NYT/Data/central_newsData_wordcooccurence.txt", 
+												 "../part3/NYT/Data/central_snewsData_wordcooccurence.txt"],
+												["../part3/NYT/Data/southeast_newsData_wordcooccurence.txt", 
+												 "../part3/NYT/Data/southeast_snewsData_wordcooccurence.txt"],
+												["../part3/NYT/Data/northwest_newsData_wordcooccurence.txt", 
+												 "../part3/NYT/Data/northwest_snewsData_wordcooccurence.txt"],
+												["../part3/NYT/Data/pacific_newsData_wordcooccurence.txt", 
+												 "../part3/NYT/Data/pacific_snewsData_wordcooccurence.txt"],
+												["../part3/NYT/Data/southwest_newsData_wordcooccurence.txt", 
+												 "../part3/NYT/Data/southwest_snewsData_wordcooccurence.txt"] ],
+								"Common Crawler": [  ["../part3/Commoncrawl/Data/atlantic_crawlData_wordcooccurence.txt", 
+												 "../part3/Commoncrawl/Data/atlantic_scrawlData_wordcooccurence.txt"],
+												["../part3/Commoncrawl/Data/central_crawlData_wordcooccurence.txt", 
+												 "../part3/Commoncrawl/Data/central_scrawlData_wordcooccurence.txt"],
+												["../part3/Commoncrawl/Data/southeast_crawlData_wordcooccurence.txt", 
+												 "../part3/Commoncrawl/Data/southeast_scrawlData_wordcooccurence.txt"],
+												["../part3/Commoncrawl/Data/northwest_crawlData_wordcooccurence.txt", 
+												 "../part3/Commoncrawl/Data/northwest_scrawlData_wordcooccurence.txt"],
+												["../part3/Commoncrawl/Data/pacific_crawlData_wordcooccurence.txt", 
+												 "../part3/Commoncrawl/Data/pacific_scrawlData_wordcooccurence.txt"],
+												["../part3/Commoncrawl/Data/southwest_crawlData_wordcooccurence.txt", 
+												 "../part3/Commoncrawl/Data/southwest_scrawlData_wordcooccurence.txt"] ] }
+			$("#topics_dd").jqxDropDownList({ 
+				source: topics_source, 
+				placeHolder: "Select Item", 
+				width: 400, 
+				height: 50 });
+			$("#datasource_dd").jqxDropDownList({ 
+				source: datasource_source, 
+				placeHolder: "Select Item", 
+				width: 400, 
+				height: 50,
+				dropDownHeight: 125 });
+			$('#topics_dd').on('select', function (event) {
+				$('#buttonerror').html("");       
+				$('#buttonerror').empty();  
+				$("#barGraphContainer").hide();     
+				$('#l_top10cnt').empty();
+		    	$('#s_top10cnt').empty();
+		    	$('#l_top10co').empty();
+		    	$('#s_top10co').empty();          
+			});
+			$('#datasource_dd').on('select', function (event) {
+				$('#buttonerror').html(""); 
+				$('#buttonerror').empty(); 
+				$("#barGraphContainer").hide();     
+				$('#l_top10cnt').empty();
+		    	$('#s_top10cnt').empty();
+		    	$('#l_top10co').empty();
+		    	$('#s_top10co').empty();                    
+			});
+			$('#jqxButton').jqxButton({
+			    theme: 'energyblue'
+			});
+			$('#jqxButton').on('click', function () {
+				$("#barGraphContainer").hide();
+			    var selected_topic = $("#topics_dd").jqxDropDownList('val');
+			    var selected_datasource = $("#datasource_dd").jqxDropDownList('val');
+				if (selected_topic=='' || selected_datasource=='') {
+			    	if (selected_topic=='')
+			    		$('#buttonerror').html("Please Select a Topic");
+			    	else
+			    		$('#buttonerror').html("Please Select a Data Source");
+			    } else {
+			    	var selected_topic_index = topics_source.indexOf(selected_topic);
+			    	var selected_datasource_index = datasource_source.indexOf(selected_datasource);
+			    	$('#buttonerror').html("");
+			    	$('#buttonerror').empty(); 
+			    	$('#l_top10cnt').empty();
+			    	$('#s_top10cnt').empty();
+			    	$('#l_top10co').empty();
+			    	$('#s_top10co').empty();
+					$.get(cnt_filelocations[selected_datasource][selected_topic_index][0], function(data) {
+						cnt_l_data = []
+						cnt_l_datalines = data.split("\n");
+						for (var i in cnt_l_datalines) {
+					      	cnt_l_dataline = (cnt_l_datalines[i]);
+					      	cnt_l_datawords = cnt_l_dataline.split("\t");
+					      	if (cnt_l_datawords.length != 2)
+					      		continue;
+					    	else
+					    		var cnt_l_cnt = parseInt(cnt_l_datawords[1], 10)
+					    		if (isNaN(cnt_l_cnt))
+					    			continue
+					    		else
+					    			cnt_l_data.push([cnt_l_datawords[0], cnt_l_cnt]);
+					      	if (i==9)
+					      		break;
+					    }
+						barGraph('#l_top10cnt',cnt_l_data);
+					}, 'text');
+					$.get(cnt_filelocations[selected_datasource][selected_topic_index][1], function(data) {
+					   	cnt_s_data = []
+						cnt_s_datalines = data.split("\n");
+						for (var i in cnt_s_datalines) {
+					      	cnt_s_dataline = (cnt_s_datalines[i]);
+					      	cnt_s_datawords = cnt_s_dataline.split("\t");
+					      	if (cnt_s_datawords.length != 2)
+					      		continue;
+					    	else
+					    		var cnt_s_cnt = parseInt(cnt_s_datawords[1], 10)
+					    		if (isNaN(cnt_s_cnt))
+					    			continue
+					    		else
+					    			cnt_s_data.push([cnt_s_datawords[0], cnt_s_cnt]);
+					      	if (i==9)
+					      		break;
+					    }
+						barGraph('#s_top10cnt',cnt_s_data);
+					}, 'text');
+					$.get(co_filelocations[selected_datasource][selected_topic_index][0], function(data) {
+						co_l_data = []
+						co_l_data_uw = []
+						co_l_datalines = data.split("\n");
+						for (var i in co_l_datalines) {
+					      	co_l_dataline = (co_l_datalines[i]);
+					      	co_l_datawords = co_l_dataline.split("\t");
+					      	if (co_l_datawords.length != 2)
+					      		continue;
+					    	else {
+					    		var co_l_cnt = parseInt(co_l_datawords[1], 10)
+					    		if (isNaN(co_l_cnt))
+					    			continue
+					    		else {
+					    			wss = (co_l_datawords[0]).split(",");
+					    			w1 = (wss[0]).substring(1)
+					    			w2 = (wss[1]).substring(0, (wss[1]).length-1)
+					    			co_l_data.push({"w1": w1,"w2": w2, "value":co_l_cnt});
+					    		}
+					    	}
+					    }
+					    currentW1 = null
+					    for(var i=0;i<co_l_data.length;i++) {
+					    	if (currentW1!=co_l_data[i]["w1"]) {
+					    		co_l_data_uw.push(co_l_data[i]["w1"])
+					    		currentW1 = co_l_data[i]["w1"]
+					    	}
+					    }
+					    for(var i=0;i<co_l_data.length;i++) {
+					    	temp = co_l_data[i];
+					    	temp["w1i"] = co_l_data_uw.indexOf(temp["w1"]);
+					    	temp["w2i"] = co_l_data_uw.indexOf(temp["w2"]);
+					    	co_l_data[i] = temp
+					    }
+					    console.log(co_l_data)
+					    console.log(co_l_data_uw)
+						heatMap('#l_top10co', co_l_data, co_l_data_uw);
+					}, 'text');
+					$.get(co_filelocations[selected_datasource][selected_topic_index][1], function(data) {
+					   	co_s_data = []
+						co_s_data_uw = []
+						co_s_datalines = data.split("\n");
+						for (var i in co_s_datalines) {
+					      	co_s_dataline = (co_s_datalines[i]);
+					      	co_s_datawords = co_s_dataline.split("\t");
+					      	if (co_s_datawords.length != 2)
+					      		continue;
+					    	else {
+					    		var co_s_cnt = parseInt(co_s_datawords[1], 10)
+					    		if (isNaN(co_s_cnt))
+					    			continue
+					    		else {
+					    			wss = (co_s_datawords[0]).split(",");
+					    			w1 = (wss[0]).substring(1)
+					    			w2 = (wss[1]).substring(0, (wss[1]).length-1)
+					    			co_s_data.push({"w1": w1,"w2": w2, "value":co_s_cnt});
+					    		}
+					    	}
+					    }
+					    currentW1 = null
+					    for(var i=0;i<co_s_data.length;i++) {
+					    	if (currentW1!=co_s_data[i]["w1"]) {
+					    		co_s_data_uw.push(co_s_data[i]["w1"])
+					    		currentW1 = co_s_data[i]["w1"]
+					    	}
+					    }
+					    for(var i=0;i<co_s_data.length;i++) {
+					    	temp = co_s_data[i];
+					    	temp["w1i"] = co_s_data_uw.indexOf(temp["w1"]);
+					    	temp["w2i"] = co_s_data_uw.indexOf(temp["w2"]);
+					    	co_s_data[i] = temp;
+					    }
+					    console.log(co_s_data);
+					    console.log(co_s_data_uw);
+						heatMap('#s_top10co', co_s_data, co_s_data_uw);
+					}, 'text');
+					$("#barGraphContainer").show();
+				}
+			});
+		});
+	</script>
+</head>
+
+<body>
+	<h2>Visualization:</h2>
+	<br>
+	<div id='topics_dd'></div>
+	<div id='datasource_dd'></div>
+	<br>
+	<input type="button" value="Show Visualization" id='jqxButton' />
+	<div id='buttonerror'></div>
+	<br>
+	<br>
+	<div id="wcntContainer">
+		<h3>Word Counts for top 10 words:</h3>
+		<div id="barGraphContainer">
+			<h4>Bar Graphs:</h4>
+			<div style="width: 98%; padding: auto;">
+				<svg id='l_top10cnt'></svg>
+				<svg id='s_top10cnt'></svg>
+			</div>
+		</div>
+		<br>
+		<br>
+	</div>
+	<div id="wcoContainer">
+		<h3>Word Co-occurence for top 10 words:</h3>
+		<div id="heatMapContainer">
+			<h4>Heat Maps:</h4>
+			<div style="width:98%; padding-left: 50px;">
+				<svg id='l_top10co'></svg>
+				<br>
+				<svg id='s_top10co'></svg>
+			</div>
+		</div>
+		<br>
+		<br>
+	</div>
+</body>
+</html>
